@@ -23,23 +23,32 @@ static bool is_move(void) {
          && (buff[2] <= 'D' || buff[2] >= 'A');
 }
 
+static char special_key;
+
+char get_special_key(void) {
+  return special_key;
+}
+
 unsigned char read_ch(void) {
   buff_len = read(STDIN_FILENO, buff, sizeof(buff));
   if (buff_len == 0)
     return NO_INPUT;
 
   if (buff_len == 1) {
-    // Output is raw so we better send a backspace
-    if (buff[0] == ASCII_DEL)
-      return '\b';
-
     return buff[0];
   }
 
-  if (is_move())
-    write(STDOUT_FILENO, buff, buff_len);
-  if (is_alt())
-    printf("<Alt-%c>", buff[1]);
+  if (is_move()) {
+    //            \x1b[c
+    special_key = buff[2];
+    return MOVE_KEY;
+  }
+
+  if (is_alt()) {
+    //                [c
+    special_key = buff[1];
+    return ALT_KEY;
+  }
 
   return NO_INPUT;
 }

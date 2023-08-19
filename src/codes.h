@@ -15,6 +15,7 @@
 // TODO: Other clearing escape sequences...
 #define CLR_SCREEN "\x1b[2J"
 #define CLR_EOL "\x1b[K"
+#define CLR_EOS "\x1b[1J"
 
 // TODO: There are control codes that move the
 //       cursor just like the following ones,

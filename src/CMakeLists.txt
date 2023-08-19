@@ -1,1 +1,1 @@
-add_executable(${PROJECT_NAME} main.c term.c input.c)
+add_executable(${PROJECT_NAME} main.c output.c term.c input.c)

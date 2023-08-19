@@ -3,8 +3,9 @@
 #include <asm/termbits.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <stdio.h>
 #include <string.h>
+#include <stdio.h>
+#include "term.h"
 
 #ifdef TEGETS2
 typedef struct termios2 Tio;
@@ -19,8 +20,7 @@ typedef struct termios Tio;
 static Tio oldcfg;
 
 const char *quit_term(void) {
-  const char ctrl[] = "\x1b[?7h"
-                      "\x1b[r"
+  const char ctrl[] = "\x1b[r"
                       "\x1b[?1049l";
   write(STDOUT_FILENO, ctrl, sizeof(ctrl) - 1);
   if (ioctl(STDIN_FILENO, SET, &oldcfg) < 0)
@@ -29,12 +29,22 @@ const char *quit_term(void) {
 }
 
 static volatile struct winsize ws;
+static volatile bool win_change;
 
 static void winch(int signum, siginfo_t *info,
                   void *ctx) {
   (void)signum;(void)info;(void)ctx;
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
     perror("Couldn't update window size.");
+  win_change = true;
+}
+
+bool window_resized(void) {
+  if (win_change) {
+    win_change = false;
+    return true;
+  }
+  return false;
 }
 
 unsigned short term_width(void) {
@@ -43,6 +53,21 @@ unsigned short term_width(void) {
 
 unsigned short term_height(void) {
   return ws.ws_row;
+}
+
+void set_scroll(void) {
+  char buff[12] = "\x1b[r\x1b[1;";
+  int len = 7;
+
+  unsigned short y = term_height();
+  while (y) {
+    unsigned short r = y % 10;
+    y /= 10;
+    buff[len++] = r + '0';
+  }
+  buff[len++] = 'r';
+
+  write(STDOUT_FILENO, buff, len);
 }
 
 const char *init_term(void) {
@@ -69,9 +94,8 @@ const char *init_term(void) {
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
     return "Couldn't get terminal size.";
 
-  printf("\x1b[?1049h"
-         "\x1b[1;%hur"
-         "\x1b[?7l", ws.ws_row);
+  const char msg[8] = "\x1b[?1049h";
+  write(STDOUT_FILENO, msg, sizeof(msg));
 
   struct sigaction sa = { .sa_sigaction = &winch };
   sigaction(SIGWINCH, &sa, NULL);

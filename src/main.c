@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "codes.h"
 #include "input.h"
 #include "term.h"
 
@@ -13,13 +14,23 @@ int main(void) {
   while (1) {
     unsigned char in = read_ch();
     switch (in) {
-    case 0xff:
+    case NO_INPUT:
       continue;
     case 'q':
       quit_term();
       return 0;
+    case '\r':
+      printf("\r\n");
+      break;
+    case '\b':
+      printf(CUR_LEFT CLR_EOL);
+      // TODO: Reprint rest of line
+      break;
     default:
       printf("%c", (char)in);
+      // TODO: When the cursor isn't at the end of
+      //       the line, redraw rest of line.
+      break;
     }
   }
 }

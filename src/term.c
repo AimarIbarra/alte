@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <sys/ioctl.h>
 #include <asm/termbits.h>
 #include <stdlib.h>
@@ -18,12 +19,30 @@ typedef struct termios Tio;
 static Tio oldcfg;
 
 const char *quit_term(void) {
-  const char ctrl[] = "\x1b[r"
+  const char ctrl[] = "\x1b[?7h"
+                      "\x1b[r"
                       "\x1b[?1049l";
   write(STDOUT_FILENO, ctrl, sizeof(ctrl) - 1);
   if (ioctl(STDIN_FILENO, SET, &oldcfg) < 0)
     return "Couldn't restore terminal settings.";
   return NULL;
+}
+
+static volatile struct winsize ws;
+
+static void winch(int signum, siginfo_t *info,
+                  void *ctx) {
+  (void)signum;(void)info;(void)ctx;
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
+    perror("Couldn't update window size.");
+}
+
+unsigned short term_width(void) {
+  return ws.ws_col;
+}
+
+unsigned short term_height(void) {
+  return ws.ws_row;
 }
 
 const char *init_term(void) {
@@ -47,11 +66,15 @@ const char *init_term(void) {
   if (ioctl(STDIN_FILENO, SET, &newcfg) < 0)
     return "Couldn't change stdin configuration.";
 
-  struct winsize sz;
-  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &sz) < 0)
+  if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
     return "Couldn't get terminal size.";
 
   printf("\x1b[?1049h"
-         "\x1b[1;%hur", sz.ws_row);
+         "\x1b[1;%hur"
+         "\x1b[?7l", ws.ws_row);
+
+  struct sigaction sa = { .sa_sigaction = &winch };
+  sigaction(SIGWINCH, &sa, NULL);
+
   return NULL;
 }

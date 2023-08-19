@@ -18,7 +18,8 @@ typedef struct termios Tio;
 static Tio oldcfg;
 
 const char *quit_term(void) {
-  const char ctrl[] = "\x1b[r\x1b[?1049l";
+  const char ctrl[] = "\x1b[r"
+                      "\x1b[?1049l";
   write(STDOUT_FILENO, ctrl, sizeof(ctrl) - 1);
   if (ioctl(STDIN_FILENO, SET, &oldcfg) < 0)
     return "Couldn't restore terminal settings.";
